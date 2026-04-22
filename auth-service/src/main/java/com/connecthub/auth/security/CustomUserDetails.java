@@ -1,7 +1,6 @@
 package com.connecthub.auth.security;
 
 import com.connecthub.auth.entity.User;
-import lombok.AllArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,10 +9,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-@AllArgsConstructor
 public class CustomUserDetails implements UserDetails {
 
 	private final User user;
+
+	public CustomUserDetails(User user) {
+		this.user = user;
+	}
 
 	public UUID getUserId() {
 		return user.getUserId();
@@ -59,6 +61,6 @@ public class CustomUserDetails implements UserDetails {
 
 	@Override
 	public boolean isEnabled() {
-		return Boolean.TRUE.equals(user.getIsActive());
+		return user.getIsActive() != null && user.getIsActive();
 	}
 }

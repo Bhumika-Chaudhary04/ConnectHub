@@ -3,6 +3,7 @@ package com.connecthub.auth.service;
 import com.connecthub.auth.dto.*;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface AuthService {
 
@@ -20,5 +21,11 @@ public interface AuthService {
 
 	List<UserSearchResponse> searchUsers(String keyword);
 
+	UserProfileResponse getUserById(UUID userId);
+
+	List<UserProfileResponse> getUsersByIds(List<UUID> userIds);
+
 	UserProfileResponse updateStatus(String email, UpdateStatusRequest request);
+
+	void recordLastSeen(String email);
 }

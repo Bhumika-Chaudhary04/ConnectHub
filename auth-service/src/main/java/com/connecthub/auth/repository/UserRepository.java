@@ -10,19 +10,19 @@ import java.util.UUID;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
 
-    Optional<User> findByEmail(String email);
+	Optional<User> findByEmail(String email);
 
-    Optional<User> findByUsername(String username);
+	Optional<User> findByUsername(String username);
 
-    Optional<User> findByUserId(UUID userId);
+	Optional<User> findByUserId(UUID userId);
 
-    boolean existsByEmail(String email);
+	boolean existsByEmail(String email);
 
-    boolean existsByUsername(String username);
+	boolean existsByUsername(String username);
 
-    List<User> findByStatus(UserStatus status);
+	List<User> findByStatus(UserStatus status);
 
-    void deleteByUserId(UUID userId);
+	void deleteByUserId(UUID userId);
 
-    List<User> findByUsernameContainingIgnoreCase(String username);
+	List<User> findByUsernameContainingIgnoreCase(String username);
 }

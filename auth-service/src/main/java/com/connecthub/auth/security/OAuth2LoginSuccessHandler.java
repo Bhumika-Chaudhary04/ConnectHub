@@ -7,20 +7,29 @@ import com.connecthub.auth.repository.UserRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Component
-@RequiredArgsConstructor
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
 	private final UserRepository userRepository;
 	private final JwtService jwtService;
+
+	@Value("${app.frontend.oauth-success-url:http://localhost:3000/oauth-success?token=}")
+	private String frontendRedirect;
+
+	public OAuth2LoginSuccessHandler(UserRepository userRepository, JwtService jwtService) {
+		this.userRepository = userRepository;
+		this.jwtService = jwtService;
+	}
 
 	@Override
 	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -29,29 +38,49 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 		OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
 
 		String email = oauthUser.getAttribute("email");
-		String fullName = oauthUser.getAttribute("name");
-		String avatarUrl = oauthUser.getAttribute("picture");
+		String name = oauthUser.getAttribute("name");
+		String avatar = oauthUser.getAttribute("picture");
 
-		User user = userRepository.findByEmail(email).orElseGet(() -> {
-			String username = email.split("@")[0];
+		if (email == null) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Email not available from Google");
+			return;
+		}
 
-			User newUser = User.builder().email(email).username(generateUniqueUsername(username)).fullName(fullName)
-					.avatarUrl(avatarUrl).passwordHash(null).provider(AuthProvider.GOOGLE).status(UserStatus.ONLINE)
-					.isActive(true).build();
+		AuthProvider provider = AuthProvider.GOOGLE;
+		final String finalEmail = email;
+		final String finalAvatar = avatar;
 
-			return userRepository.save(newUser);
-		});
+		User user = userRepository.findByEmail(finalEmail)
+				.orElseGet(() -> createNewUser(finalEmail, name, finalAvatar, provider));
+
+		if (avatar != null && !avatar.equals(user.getAvatarUrl())) {
+			user.setAvatarUrl(avatar);
+			userRepository.save(user);
+		}
 
 		String token = jwtService.generateToken(user.getUserId(), user.getEmail());
-		response.getWriter().write("Google login successful. Token: " + token);
+		String redirectUrl = frontendRedirect + URLEncoder.encode(token, StandardCharsets.UTF_8);
+
+		response.sendRedirect(redirectUrl);
 	}
 
-	private String generateUniqueUsername(String baseUsername) {
-		String username = baseUsername;
+	private User createNewUser(String email, String name, String avatar, AuthProvider provider) {
+		String username = generateUsername(email);
+
+		User user = User.builder().email(email).username(username).fullName(name != null ? name : username)
+				.avatarUrl(avatar).passwordHash(null).provider(provider).status(UserStatus.ONLINE).isActive(true)
+				.build();
+
+		return userRepository.save(user);
+	}
+
+	private String generateUsername(String email) {
+		String base = email.split("@")[0].replaceAll("[^a-zA-Z0-9_]", "_");
+		String username = base;
 		int count = 1;
 
 		while (userRepository.existsByUsername(username)) {
-			username = baseUsername + count;
+			username = base + count;
 			count++;
 		}
 
